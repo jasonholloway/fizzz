@@ -1,0 +1,600 @@
+
+We need a data structure to accumulate decisions into
+
+A conveyor belt, a stream - a circular conveyor belt, from which seeds are picked, and given bodies over repeated passes
+
+As bits of info circulate, being clumped together, they are tested for patterns that will suggest further gatherings
+
+There's a common data store full of blobs
+
+Instead of a conveyor belt, which implies random confrontations with bits of data to be tested via strategies
+we can have explicit hooks - when a kind of data has been appended or deleted, listeners that have registered will be informed, and will take up the work next
+
+but the problem with such listening is that it implies forking: arbitrarily the first listener in a queue might damage data such that it makes no sense to those next in line
+
+rather the problem is the problem of mutation: waiting in line isn't a transparent bit of mechanism
+
+we'd be better on this score if just one listener was picked out of a series of candidates - then at least it'd receive what it was expecting
+
+---------------------------------------------
+
+but listening for certain events complicates introducing new strategies - it also means that strategies would have to be static (or at least more inclined to be so given the increased costs of changing)
+
+letting clumps arrive by chance promotes fairness, but the open-endedness could also lead to culdesacs as some strategies mutate too much
+
+some structure to this buffer would be efficient, and promote understanding of what was actually happening
+
+---------------------------------------------
+
+bits of info with addresses but no latlong, for instance, 
+
+
+
+
+
+
+-----------------------------------------------
+
+IDEA 1:
+A pipeline of processing: allows info to be chugged through at a comfortable rate. Also allows a nice separation of parts: scrapers scrape, dedupers dedupe, etc. Individual bits can be improved incrementally.
+
+But:
+The top down set-up means that schemas will be hard set from above: each part of the pipeline will receive only what its predecessor has given it, and will inevitably be programmed to expect that exactly. Before you know it there'll be schema guards at every step.
+
+Either bits of info will be blocked by schema failures, or the processor parts will have to pass non-ingestable bits through - this then poses problems for the folowing processors.
+
+-----------------------------------------------
+
+IDEA 2:
+A circular buffer of processors, each of which accepts work only if the piece of info meets some criteria - think a selective strategy pattern.
+
+Pieces that are passed over can then be pecked at by other processors - the results of which might then allow others to work on them.
+
+This is a reaction to the too-prescriptive ordering of processing of IDEA 1's pipeline - instead let things happen by chance - this is less efficient and less predictable, but is at least fair and allows cheap combinations
+
+Responsibility for not breaking things isn't then enforced by the overall design, but is delegated to the strategies themselves: they have to promise to make only constructive contributions, and to not destroy good information. Everything is additive.
+
+This also relies on dynamic typing: each strategy will have its own strong schema, but outside of this pieces are just bags of structured, named values.
+
+Pieces of info will be dynamically bound to strong schema, always with possibility of not matching.
+
+Example:
+Some scrapers will get items of data back from APIs in response to previous findings from other APIs: they are both producers and consumers.
+
+A particular scraping strategy could happen across (on the buffer) a newly-discovered restaurant, the name of which had been scraped from elsewhere - it would then look up precise address info, populating
+candidate addresses. These addresses could then be found by another processor that would look up latlongs - but if the addresses hadn't been filled in, it would have passed over the info.
+
+-----------------------------------------------
+
+IDEA 3:
+Why couldn't name -> address -> latlong happen in one swoop? The strategy the scrapes the name should just yield up its information without dictating what happens next. But the strategy that looks up addresses
+could register itself as a listener for 'FoundName' events - this is more scalable, modularises concerns etc etc.
+
+But it's also an optimisation - it can be put in place, on top of the circular buffet, and will work much better for some cases - but it isn't generally applicable.
+
+Some strategies rely on constellations of info being in place - not just a name, but a name *and* a rough location, say - they can't just listen for one event. This common case would be covered by the circular conveyor approach.
+
+So, listening for events could be a productive mechanism on top. Instead of events having distinct names, changes to values at certain paths could be listened for - eg addresses[*].latlong
+
+The strategies would still try to dynamically bind to the piece before processing it - perhaps it won't actually meet its expectations. Again - the event mechanism is an add-on.
+
+Problem: 
+if there are multiple strategies listening for the same changes, we have to choose how to order their application. Arbitrariness here is as good as anything - it conceptually suits the greater arbitrariness of the conveyor belt.
+
+
+
+
+----------------------------------------------
+
+INDEXING:
+Not all information can be accumulated into distinct, individual clumps. 
+
+Indexes have to be built up - shared state across processings. Deduplication, ordering of POIs into places, etc.
+
+External stateful services - Redis, ElasticSearch...
+
+Indexing is as reasonable a concern for processing strategies as the clump-accumulation described above - in fact it is mixed up with it. 
+
+Deduplication, for instance, should be performed alongside address scraping. In fact, address scrapers should check against an index of visited pages (and times of last visitings) to avoid repeatedly
+going over the same ground. This would be part of the scraping. This common state could be visible only to the particular class of scraper - a namespaced portion of Redis, for instance, with a sorted hashmap of URLs and timestamps.
+
+There's no need for such an index to be going around the buffer in any guise - it's like secret knowledge, known only to the group of processors to save themselves work.
+
+Deduplicators, too, don't need to share their indexes: they just need to promise to promote uniqueness, so that processors eating from the common trough can expect things to be reasonably unique, but never totally so.
+
+Will there be any public indexes then, shared between processors? It's reasonable that there could be - a graph of cities, transport links, etc.
+
+If a strategy updated a map of transport links, shouldn't other strategies have the chance of doing something in reaction to this? It's an addition to the body of knowledge, just as accumulating attributes onto a clumped POI is.
+
+The circle of randomly-met clumps is itself a kind of index, with a kind of blinkered cursor. All the clumps simultaneously exist, the limiting of attention to the one clump under the spotlight works for certain strategies,
+but others are imaginable that look at the bigger picture: a link between two places that isn't acknowledged in the records of those places, if visible, should be acted upon.
+
+The problem with opening the problem up like this is that randomly picking out bits of info to act upon is daft in its slowness and waste. There has to be some way of keeping in earshot only events that you care about, so that attempts at processing only occur when something of interest actually happens - instead of haring about randomly hoping to find something by chance.
+
+This over-attentive general listening is itself a kind of specialisation of the event-listening approach described in IDEA 3: its just that the registered listener is a '*' - a wildcard accepting everything, so that everything listens to everything, in undecidable order.
+
+-----------------------------------------------
+
+So - the general pattern is that of listening to scoped events. Event listeners can be registered to listen for certain classes of changes. Given a change each interested listener will be given a chance to act on it, though it might be gazumped by its competitors before it has chance to properly acept the task.
+
+There have to be common schemes of matching to events. POI clumps, being quasi-JSON shapes, can raise events matchable with JSON-Path expressions. 
+
+Listeners to a certain object would be actioned one-by-one, while yielding when calling external APIs to allow other events to be processed.
+
+-----------------------------------------------
+
+
+BACK TO SIMPLICITY:
+
+A scraper of restaurant names would create POIs like this:
+{ type: 'food', name: 'This and That', city: 'Manchester' }
+
+A strategy listening for "type == 'food' && name != undefined" would then kick in, populating addresses via some kind of search:
+{ type: 'food', name: 'This and That', address: { street: '13 Some Street' }, city: 'Manchester' }
+
+But another, listening to the same, would add another, competing address:
+{ type: 'food', name: 'This and That', address: [{ street: '13 Some Street' }, { street: 'Some Street, 13' }], city: 'Manchester' }
+
+A strategy listening for "address.length > 1" would then kick in:
+{ type: 'food', name: 'This and That', address: { street: '13 Some Street' } }
+
+A strategy listening on "address" would then finally get round to adding a latlong:
+{ ... latlong: '123.12:12333.11' }
+
+Given the addition of a latlong, the POI should be placed on a map
+{ ... } & EXTERNAL MAP
+
+(but the external map would have to refer back to something - how are we to name our item? Or maybe all references should support multiples. Better if the multiples were grouped not by the map, but by some more amenable, local structure)
+
+Is this simple? Nope. But the possibility of uncertainty should always be factored in, as the slow whittling down of possibilites is the core of this putative app.
+
+-----------------------------------------------
+
+MEASUREMENT - FEEDBACK
+
+As well as incremental strategies of improvement, there should be ways of measuring what, in total is happening.
+
+A kind of general distribution of graphs could be made so that particular areas of uncertainty could be visualised.
+
+As well as random sampling - which would of course be easiest to implement.
+
+
+
+-----------------------------------------------
+
+
+So, possibilities can be tracked expansively, as our graphs have multiple possible real slices, each of which would have to be acted upon, mapped - exponential state space.
+
+But a process of unification has to counterbalance this concern for fidelity: forgetting is as much progress as accumulating. As such, how can changes only be additive?
+
+As long as all actions are additive, no information is lost, and the exact ordering of processings needn't matter: all will ultimately come together. Commutativity.
+
+But we have to be able to rule things out. Possibilities have to be got rid of.
+
+
+
+
+----------------------------------------------
+
+DEDUPING
+
+Deduplication is the act of reducing possibilities.
+
+No! Deduping means unifying separate entities into a single graph of possibles.
+
+So, suddenly, instead of stable but separate entities, we have single, uncertain entities.
+
+
+How can deduping join two pieces on only a single property? A deduping strategy would be better looking at the bigger picture to make a decision.
+
+And how can candidates be found? Surely only by consulting some kind of index, some kind of shared data structure in which all candidates happen to be represented.
+
+A 2D index of latlongs could be searched for near neighbours. An index of names would also colocate POIs. If pieces were neighbours according to multiple indexes, then questions would have to be asked.
+
+
+And then, if two were deduped, we'd be left with a cut-and-shut object more complicated than the two originals.
+
+We'd want multiple possibilities to then be whittled down.
+
+Strategies listening for multiple possiblities on certain properties would then kick in and narrow the graph down, unless they were unreconcilable.
+
+Strategies would therefore hang off changes to certain properties.
+
+Changes to the graph are series of individual events, grouped into transactions. Each event would be passed through the stack of listeners, which would be enqueued and actioned after the transaction.
+
+
+
+JS Proxies could do this, by magically suppressing/cleverly fudging the true semantics
+
+But assigning a property should replace - like a put. How can other possibilities arise? By explicitly assigning uncertainties, by merging graphs. Neither of these actions would require a proxy.
+
+OK - how about getting? Well, instead of individually enumerating possibilities, entire flat graph slices could be handled one by one - though this points to massive duplication if there are many choices in play.
+
+Strategies should then explicitly access values in the graph.
+
+
+Otherwise how could we differentiate between correcting and adding as a possibility? Inline handlers could compare assignments to in-place values.
+
+But many unrecognisable duplications would remain: slight misspellings, unnormalizable misformattings.
+
+
+
+An addition to a graph would be matched against strategies, then those strategies would receive relevant snapshots - but not irrelevant ones. So a newly assigned address would incur the
+follow-on processing of a latlong suggester, but this suggester wouldn't see old addresses - only the new one. 
+
+The values it would see as passed in values - ie the number of times it'd be called, would be determined by its mask. If it listened on address and name, and a new name were added,
+then snapshots with the new name, and each possibility of address, would be passed to it in succession. Other parts of the graph would be inaccessible to it. Attempts to access them
+would throw errors. You have to declare what you will be able to read.
+
+
+But how would unifications occur by this scheme?
+
+Unifications aren't between snapshots, but on entire graphs. No - they are on subsets of graphs, again. But they do need to be aware of multiple possiblities, rather than just being piped flat impressions of normality.
+
+Unifiers - would choose between possibles, making use of shared data, apis if needed.
+
+They would listen, say, to address sub-graphs. When one was added, or a leg to one was added, then the strategy would apply, and unify as it could. It would receive, not a snapshot, but an honest graph of possibles.
+
+Simple unifiers would generally be in place: for instance for matching of misspellings and elisions. Such normalizing would be best if there were some indication of data type, of course.
+
+
+
+Projectors from snapshots are a kind of mediated special form of the unifiers described above. A projecter is a unifier that enumerates all of the possibilities it receives - so unifiers are the first to be implemented.
+
+
+-----------------------------------------------
+
+
+Every named value in the graph is actually a probability distribution.
+
+Overwriting a property just means that 'according to me' that value should be different. If a follow on projection then assigns other values based on that first probability, its
+productions should be multiples taking into account the compound uncertainty.
+
+An address with a sibling, all else being equal, will have a probability of 0.5. The introduction of such an address may also add a latlong. That latlong, if it is the one and only possible answer given the address,
+will share the 0.5 possibility, while other latlongs that may be in place will themselves be multiplied by 0.5. But this doesn't retain the connection of things. Really, projections aren't imperative executions,
+but are declarative mappings, forming a probabilistic structure.
+
+Such fidelous structures can be built up, but there has to be some counterbalancing reduction of them - forgetting has to be a thing for the whole to remain lithe and agile.
+
+Plus there isn't always causal connection: sometimes projected values should be mixed and matched.
+
+But sometimes *there is* a connection. Given one thing, then... what? 
+
+A strategy is invoked because a city is changed - that is, there are now two possible cities. Given which city is the real one, then the name of the POI might be slightly different: parallel possibles can have affinities.
+
+How would this assertion arise in the first place? A naming strategy would firstly be run using the first city name, and then the same given the latter. Each one would pose possibles, and these possibles could be unified
+into simpler, more substantial values. But they shouldn't just be dolloped into an array of possibilities without rememberance.
+
+Eager evaluation throws away structure, but not completely: it could be worth it for the simplicity. Otherwise each object becomes a big complicated graph of functional follow-on relations.
+
+Or, if such relations are taken to be transparent (not actually always possible, this - unless API return values were materialised into the function) then they can be replayed, evaluated as and when.
+
+But anyway - if they could be retained, instead of being analysed up front to reduce their distributions of results into a kind of table - then they wouldn't trigger anything, as their evaluation would
+be lazy. No indexing would then happen, unless unifiers completely rid them of uncertainty. When the magical one was reached - then pop! things fall into place.
+
+Delaying decisions builds graphs of possibilities, however expressed. Before, leaving these uncertainties in place seemed to be a way of yielding to other unknown parties to do our unifications for us.
+
+But how are uncertainties to be projected into indices? Each index entry is to have a probability value attached? This seems a lot to expect of these indexes.
+
+But also, suppressing these differences seems rash. Two equally likely addresses should be retained to be chosen from. Maybe both are correct? Maybe a POI actually has two sites? That's a reasonable strategy to apply
+if various aspects suggest it.
+
+-------------------------------------------------------------------
+
+An address is added, given the name of the POI. Maybe this could create an entirely separate, flat graph to be acted on.
+
+But then unfication would still be a thing, just at the top level. Strategies would try and unify based on some kind of index. Names, latlongs wuold be normalized, projected into a set. Given matching hashes,
+then these would be merged. This model of having access to the entire set at once to mutate is quite different from that of updating clumps individually.
+
+Partitioning of the entire set could be done, but partitions can't be static - there must be the possibility of unifying across boundaries.
+
+Such unificiations across boundaries would be interspersed with in place unifications too - not just two big sequential stages of communication.
+
+Maybe unificiations could only happen if they happened to be within the same partition, but partitions would occasionally be swapped about.
+
+Everything would therefore be processed locally, using in-memory data structures, etc, and occasionally committed to storage as a batch.
+
+Such a model would nicely split work into chunks.
+
+-------------------------------------------------------------------
+
+But how would these total matchings be scheduled? They would presumably need to access the big total index, which would itself be an item of data. The single-threaded model of node would
+serialize access to this. Unless async things were in progress. Strategies would have hooks that enforced synchronous execution for the important bits.
+
+-------------------------------------------------------------------
+
+
+Say if we had two latlongs that we'd found, these would then exist as possibilities. 
+
+Other scrapers would then come back with enrichments based on these - they would see enumerated snapshots suited to their interests.
+
+Then their own results should continue to exist as multiples. That is, the preemptive unification of these into a single entity is... preemptive. Who are we to say the newly found piece is the same
+entity? To extend the idea: say the original piece of information is a directory of leads that will occasinally be refreshed, added to.
+
+Strategies will exist that listen to additions to this directory - they will use it as a basis for scraping - creating from scratch - other related entities. So the 
+
+Alternatively the environment with the singleton directory could be taken as one big graph. Strategies listening to the directory of POI sources would then add to the directory of leads that would also be part of the same overarching (but partitioned) graph.
+
+The problem with this approach is that partitioning is a thing. Entities need their GUIDs.
+
+Scraped inputs will then be lists of fresh entities, ready to be assimilated and enriched by various strategies.
+
+These fresh entities - leads - would be separately prepared, and fed into the batch to be amalgamated. The structure would be JSON objects with GUID ids.
+
+-------------------------------------------------------------------
+
+Indexes would only be local. Between batches, indexes wouldn't exist - but they would, as separate entities! Then, in repartitioning, they'd somehow be merged and resplit.
+
+Hmm... would be easier to reindex at the beginning of every batch. The indexes are only for local unifications.
+
+-------------------------------------------------------------------
+
+
+
+So, the dilemma: clumps of state, being disaggregated chains of possible follow-ons (like pulled pork on a bun) can be piled up, without interconnecting tissues.
+
+This eager clumping into balls of state suits very well the idea of listening to changes - such listening should always be scoped to paths in accumulated graphs.
+
+It is also possible to imagine, using a kind of re-applicable principle, an unfolding, efflorescing, many-leaved growth of what-ifs. The problem here though is in how
+possible worlds multiply.
+
+If we were to admit such unfolding possiblities, it feels we should be very attentive to unifying them quickly - we would have to be better at unifying than projecting.
+
+------
+
+But projecting without the bodged unification - the projection of branches on branches - why would we ever pursue these speculative leads, unless the end results were themselves means
+of finalising the original decision? The circle is closed: the results of our speculations put our speculations to bed.
+
+Reality doesn't proceed from the bottom up: we don't have to make a certain decision before proceeding - the real layout of things is always beyond the horizon; and the way of moving forwards
+is to cycle, relinquishing information at a not-too-hasty rate.
+
+So, if we have a range of possibles, which we can individually pursue, we can't expect to enshrine the bifurcation in the structure of the clump for ever: like a shoal of whales the possibles
+may leap into the air in opposing directions, but they will recoalesce soon enough of necessity, ready to leap again. But this leaping again: here we hit the brick wall of turgid reality - will
+there be a leaping again after a disagreement over an address? Maybe the address disagreement is itself the result of speculations collapsed down into a heap. The fact of uncertainty isn't forgotten
+(unless we get tired of it and clip it off) - but the path to reach it is.
+
+------
+
+So we want both? The immediate collapsing is just an extreme - we're still keeping things separate in the body of the function (if the projection is from just one listened-to slice)
+
+The extrapolation of possibles however here requires prompter unification, as the flattening of structure reveals lets all the bits relate to each other directly, exponentially complicating things.
+
+Keeping some structure actually reduces this cross-relation, by scoping possibles to their proper places. Scoped as such, projections won't cross-relate non-neighbours.
+
+Scoping implies some mechanism, the equivalent of the lists of possibles in every position.
+
+The scoping is always a projection - that is, another first-class graph - that is related to its predecessor by the speculation of some strategy. But its base is generally a snapshot, rather
+than the full clump of possibles itself. Also, its base is limited to the small set of properties listened to by the strategy.
+
+-----
+
+But will there be strategies aware of the full structure? Presumably, yes - just as unifiers are aware of full sets of flattened possiblities.
+
+
+Can there be unifying of the leafing? Well, yes, there can be - this is exactly what we want: a violent occasional flattening.
+
+But what will be the structure they encounter? I'm imagining a stack of layers, projecting from below only the projected-from base values, alongside speculated results.
+
+So, a strategy for working out the name of a place from an address - will in the first place create a new sibling layer, and will not emplace directly, or overwrite.
+
+-----
+
+The creation of such a layer will be subject to listenings as much as the next graph - if the layer has changed the requisite props, then it itself will be subject to the extrapolations
+of other strategies.
+
+Each layer is in fact just another clump - but each also exists in an index, and is as such subject to occasional unification. Clumps will have siblings.
+
+
+-------------------------------------------------------
+
+Incremental working of data should be made as easy as possible - diffs of changes before committing, for instance, with nodemon refreshing the view when we change a script.
+
+I can imagine a two column view: before and after. Maybe with a colour-coded diff display (though would this always be clear?) 
+
+And a filter string that will show only relevant bits of clumps
+
+-------------------------------------------------------
+
+
+So, we now have some select data. We have some basic clumps.
+
+Now our choice is between projection and unification: we'd actually agreed that these need to be equivalent (nb project/unify <-> map/reduce)
+
+So we want both, at once!
+
+The common underlying mechanism is that of listening to changes - or rather, I should be more precise here: it's that of masked application to slices.
+
+A clump's slices will be projected to new layers, piled on to the existing stack. These will then be unified - will decay back into - the clump.
+
+Can layers have spreads? Clumps can, as detritus of productive decay.
+
+Transitive thinking says 'yes', they should, though there are costs associated: if layers are uncertain, then collapsing them becomes more involved. But then, transitive thinking says
+general rejigs acrue local benefits.
+
+For layers to have multiple possibles, it (almost) implies - suggests, rather - their own set of subsidiaries collapsing into em.
+
+The original layer-cake vision leaves this straight-forward: instead of an endless tree, each cake relates to its one downstream, its confluence is the root clump.
+
+
+If we generalise clumps to form a graph (the depth of which should remain shallow, given an ecosystem in balance) then this poses a further question for our projections: instead of
+listening to the one clump, they will listen to all. On each change to any layer, the listeners will be checked with, and further projections will be allowed. But these projections may
+require fields not available on the local layer, that are nevertheless available on the root.
+
+But, if so, maybe they should only be triggered if all their inputs are available: the merging itself will be an action triggering follow-ons, one amongst many.
+
+Chained projections will be allowed to proceed as they wish, only on their collapsing will others get their chance to fire.
+
+
+Unification would be done by looking at neighbouring layers and bringing them together. But - not just single layers, but one-to-many. In that, if there are multiple projections from
+the base, they all have to be given a fair say in the unification.
+
+Eager unification - a one-by-one folding in - is in fact fair, if the order of strategy application is fair. A projection fires, and immediately unifiers are triggered.
+Maybe one unifier just overwrites, others will reduce to arrays of possibles, ready to be ruminated over later. But over-eager flattening disallows alternative theses.
+
+Decay into sets of flat possibles keeps depth down, but it is a species of failure to the perfectionist.
+
+So, unification shouldn't be done immediately. Decay allows new possiblities, which is nice, but its cross-mixing comes at the cost of tidy filing.
+
+---------------------------------------------------------
+
+Sets of possibles, in their marshy mode of coexistence, give rise to various slices from which to project.
+
+How will these projections be ordered? The slice is presumably transient - though it too is actually a projection.
+
+Given a clump with some possibles, a projection is performed yielding a new layer: its output is simpler, and gives rise itself to new projections.
+
+A projection can have sets of possibles even in its pristine, original state, if a strategy feels uncertain about an assertion.
+
+These possibles should themselves trigger strategies on their first statement: possibles should trigger slices to be cut, and posited. These slices will subsist in the tree as normal layers,
+as flights of fancy into the ether. But they will soon fall down, back into their parents.
+
+--------------------------------------------------------
+
+There's a problem here with the actual collapsing, as with it we must elide the intermediary and join what were previously distant - a cut and shut job. Forgetting, again, is productive.
+
+But are the grandchildren adopted by the grandparents? There's a mismatch here. A speculation from a speculation shouldn't be taken as fact, just because we forgot where we began. In fact,
+such a breakage would, you'd expect, cut off the lifeblood from the orphaned idea. If it was lively enough, there might be some point in keeping it on (as it contained some kernel of interest
+to the strategies) - but adoption as standard? Hmm.
+
+But the word 'speculation' can only really be applied to applications to slices. Normal attempts at enrichment given undisputed base facts shouldn't be arbitrarily killed either.
+Forgetting is productive in its ways: forgetting structure allows analogising, unexpected cross-comparisons; but forgetting facts and well-reasoned deductions? 
+
+Facts should live on in the caches of the providers: if they're no needed by the clump, tell em to sod off. But deductions (and indeed, again, facts) - these should bear some weight
+in deciding which branches to cull; that is, which structure to keep.
+
+What's the point in keeping a graph of depth here? It's to stop over-mixing of isolated facts, atomisation of assertions. Maybe a restaurant has two sites: in which place we shouldn't
+immediately treat the clump's dichotomised values as pertaining to one single thing in space: ultimately we should in fact allow branches to break away to be individuals, though still
+yoked together by some holistic shared identity.
+
+
+--------------------------------------------------------
+
+Go on then, further procrastinations...
+
+Clumps can be collapsed into each other but then there's also this stipulation that each clump is a putative entity. Individual clumps may be unified later, at which point their graphs will
+be comingled and further collapse into one another.
+
+This is transplanting, and suddenly we have holes in our sets of clumps. Coping with this means giving our clumps identities, and counters to distinguish fresh insertions.
+
+So a unifying strategy will build its own index of encountered clumps. If two clumps are detected, in their indexing, to look like each other, then they can be transplanted, then and there.
+
+This transplantation wouldn't change the identity of the clump(?), in that it would still be the same, but newly located. However, there has to be a distinction between putative entity clumps
+and their projections - otherwise, when it came to repartitioning, the trees of clumps would be split. Restricting identity to be set only at the root allows entity identity to be respected
+across periodic reshufflings; it also reduces the complication of having identities on identities, with overhead of storage.
+
+But if identity is only ever found at root, then transplanting becomes an abrupt snip, rather than a suggestive planting. An attempt at unifiying of two entities will in fact destroy the identity
+of the subject.
+
+Identity then could be carries over to the new clump, to live with it in the tree. Identity would become just another property, potentially collapsed into possibles(!)
+
+But it seems daft for identity to be managed like that. I can imagine it to be a hidden field, '_id: 213876876123' or similar, at the cost of complicating the general conception.
+
+But if identified clumps exist within identified clumps, how will they behave at timeof repartition? They will move with their parent. Only root clumps will be partitioned.
+
+What would happen if all clumps ended up co-related, under the same root parent?
+
+Would unification happen within clumps themselves? Presumably, yes. If a clump has a sibling, then it could be melded with it to simplify matters.
+
+The unification strategy then kicks in *occasionally*, non-determinisitcally perhaps. 
+
+But anyway - unification would occur vaguely like this.
+
+----------------------------------------------------------
+*Basics*
+
+We want a set of clumps with _id fields, and _children
+
+What if no _id exists? Then partitioning would be arbitrary. In fact, partitioning should always be kind of arbitrary, anyway. Nope! Identifiers are needed for corss-comparisons.
+Without ids, we don't know what's changed, exactly. So, every top level clump needs a stable id. But this then moves responsibility for emplacing them onto the strategies that might manipulate them.
+
+The framework would provide helpers to enforce such constraints - use the helper, all is ok.
+
+But the underlying structure is that: a set of clump graphs. These clumps may have possibles too; but this isn't of the first importance.
+
+Firstly, we need the structure, and the mechanism of dispatch. Back at the beginning (above) we were exploring modes of applying strategies. The approach of arbitrariness seemed a good one, with
+listening to changes as a kind of shortcut. All should work with arbitrary operations first. So this is our starting point.
+
+The 'circular buffer' of clumps and strategies. But this requires all clumps, whether nested or not, to be indexed.
+
+There was an idea before, which passed, that structure would completely collapse on repartitioning - only the bare list of clumps would persist, in a flat array of JSON objects.
+
+This would form a kind of lingua franca of processing. The output of a batch would just be a list of objects, which seems nice. But if this did happen, the flattening of structure at the end of the batch
+would leave us with many atomised facts that would have tobe reunified. A truly supple system of strategies would be able to cope with this - but such a system is a lot to ask for at first.
+
+Every loss of structure has to be made up for by the suppleness of the strategies. Expecting so little of serialization is though to hide the proper complexity of what we're doing.
+
+We're not just adding data to single clumps; we're trying out possibilities.
+
+---------------------------------------------------------
+
+Is there the possibliity of duplicating effort? Well, yes, that's always possible: it's best if we put in as few general constraints as possible: things should work without upholding guarantees
+of projecting uniquely. It's always possible to do work twice. But cacheing by providers should limit stress on upstream services, and unification should be able to bring values together.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
