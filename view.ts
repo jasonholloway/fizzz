@@ -6,25 +6,28 @@ import _ from 'highland'
 import fs from 'fs'
 import js from 'jsonstream'
 import parseArgs from 'minimist'
+import readline from 'readline'
 
 const args = parseArgs(process.argv.slice(2));
 const files = args._;
 
+let offset = 0;
+const refreshes = _();
+
+setupKeys();
+
 run().catch(onError);
 
 async function run() {
-    const watcher = chokidar.watch(files, {});    
-    const rendering = Promise.resolve();
+    refreshes
+        .flatMap(() => _(render()))
+        .errors(onError)
+        .each(() => {});
 
-    watcher.on('all', () => {
-        rendering
-            .then(() => render())
-            .catch(onError);
-    });
+    setupWatcher();
 }
 
 async function render() {
-    const offset = 0;
     const count = 10;
 
     const diffs = _(files)
@@ -59,4 +62,42 @@ function loadJsonStream(path: string): Highland.Stream<any> {
 
 function pretty(data: any): string {
     return prettyJson.render(data);
+}
+
+function setupWatcher() {
+    const watcher = chokidar.watch(files, { 
+        awaitWriteFinish: {
+            stabilityThreshold: 400
+        }
+    });
+
+    watcher.on('all', () => {
+        refreshes.write(true);
+    });
+}
+
+function setupKeys() {
+    readline.emitKeypressEvents(process.stdin);
+    process.stdin.setRawMode(true);
+    
+    process.stdin.on('keypress', (str, key) => {
+        if(!key) return;
+    
+        if(key.ctrl && key.name == 'c') {
+            process.kill(process.pid, 'SIGINT');
+            return;
+        }
+    
+        switch(key.name) {
+            case 'pageup':
+                offset -= 5;
+                refreshes.write(true);
+                return;
+    
+            case 'pagedown':
+                offset += 5;
+                refreshes.write(true);
+                return;
+        }
+    })
 }
