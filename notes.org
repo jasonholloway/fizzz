@@ -530,71 +530,158 @@ We're not just adding data to single clumps; we're trying out possibilities.
 Is there the possibliity of duplicating effort? Well, yes, that's always possible: it's best if we put in as few general constraints as possible: things should work without upholding guarantees
 of projecting uniquely. It's always possible to do work twice. But cacheing by providers should limit stress on upstream services, and unification should be able to bring values together.
 
+----------
 
+*BASICS (again)*
 
+Atomisation for serialization/repartitioning is a lovely idea though: it'd aid integration with other processings. Though the flat list would be a superset of the treed clumps - which
+would let us take the former as an input as much as the latter - no special conversion would be involved.
 
+Then when we come to reading the outputs, the nested trees can just be filtered out - as they haven't yet been rendered down, and are insubstantial.
 
+The alternative would be to violently flatten. We like this because it is a forgetting - but it is also an uncontrolled one. It'd be better to forget with intent. Though the arbitrariness of
+the forced approach has a nice generality that fully broadens out cross-association.
 
+How about if only the root were serialized: after all, the root is the confluence of all the possibilities. But then there arises a failure mode when it comes to unification. A transplanted
+root would be under threat given its newly subordinated position: only by its merging into the greater will it survive.
 
+PLUS! we want tooling that shows us truly convoluted outputs, so we can observe all kinds of operations. But this goes for indexings too, which we have decided will use transient data structures.
+Maintaining global structures invites corruption and difficult-to-understand accumulated states. If the state that is offered back up after batch processing is just lists of possible
+entities, then we have firm ground to stand on.
 
+Each batch can be inspected, replayed, tweaked, tested. If previous batches are saved, we can go back, start again, try new processings, etc.
 
+----------
 
+*Projecting to layers is itself a kind of transient indexing*
 
+If so, we can build our first layer to just take in and repeatedly bother a flat list of roots. This would be a boon.
 
+But we also want to perform projections on projections - the writing to these projections should then trigger the same projection mechanisms.
+Which means that all clumps, roots or projections, should be treated as the same - but (as above) this doesn't require them to be indexed in one place only.
 
+It requires disciplined access and manipulation - common behaviourial discipline, enforced by some mediating interface.
 
+Whenever a write is made to an object, it should trigger the strategy listeners, which will operate on the base given to them, which will be the projection itself.
 
+But what about arbitrary executions, the background of white noise from which things appear? These arbitrary applications can only be made against indexed clumps.
 
+The full graph could be crawled instead of just the lowest layer. But this would require knowledge of the structure of the clumps. But not if the clumps themselves
+exposed an iterable interface. Then they could do the flattening for the consumer - the arbitrary dispatcher. 
 
+So the outermost interface is an iterable of slices, which will be supplied by an array of clumps, which themselves may supply multiple possibilities from within.
 
+Such an interface would however modularise the clump, allowing us to start with the simplest implementation of one. Clumps would then be developed to slice and to crawl their
+interior trees.
 
+How would unifiers work? They would perform their strategies within the clump collection. Only within the collection is there some awareness of structure.
+
+But not enough! Merging a clump requires the interface supplied by a clump to allow receipt of a mergable. Will the logic of appending the clump be done within the clump
+implementation itself then? This would ease development here, but at the cost of the data structure being prominent. The data structure would appear only as an iterable at this level.
+
+And then data storage becomes a cross-cutting concern, whereas before the shape of data was general, but not cutting across anything in particular. Maybe if the big iterable were the
+storable thing. Maybe the problem is in treating everything as a simple iterable. The area is right, but the exact interface isn't perfectly fitting yet.
+
+There'd be two kinds of iterables: iterable clumps and their iterable innards. Iteration would be needed for strategy execution, but also for enumeration.
  
+The clump itself would be the hydratable unit. It would receive an application, and apply it to the proper layer.
 
+Though this the breaks the purity of the strategies. The first strategy would apply to the overall set - it would be a procedure proferring other nested behaviours.
+A strategy is, face it, only a procedure with the facility of testing its material before accepting it. If there is only one strategy and one material, it falls back
+conveniently to just being a procedure. 
 
+The idea would be for each structure to have its proper strategies. But! there may be more than one strategy occurring at the outermost level. Given a full set of clumps,
+there may be various arbitrary operations to perform. It's like the entire layered structure is driven by a driver that covers all the possible paths available at random.
 
+But to crawl through the tree of possibilities and to ensure randomness from outside, the driver needs to have its available strategies available to it, and also the materials
+that those strategies will act upon. Perhaps the clumps themselves will decide on the strategies; perhaps they will be determined from outside; but if the structures are made
+public to crawl, and the locally suitable strategies made public too, the exact decisionsover supply and choice can be made later.
 
+So, I wonder, what is the point of encapsulation? There is a very clear data structure of clumps, each one a tree. Encapsulation stops us from reasoning generally: it simplifies
+by pretending depth doesn't exist. And then when we find that it does (but do we always?)...
 
+But a tree is only treated as an iterable either way - but no it isn't! Oh no, oh no it isn't. Because it is also scoping, with each layer of it being relevant to the strategies available.
+Iteration doesn't situate nodes within others. If we will achieve the same, it will be by hiding a decoupled mechanism behind the surface of the interface that *does* know about the scoping.
+But then the driver at least knows nothing more than what it needs. If there will be an intermediary layer then so be it.
 
+But will the driver ever need to know more than iteration? Perhaps, yes: it may want to choose between clumps for fairness, but not sub-clumps. (because fatter clumps may hog resources as they
+grow ever fatter at the expense of others). Then is mere iteration sufficient?
 
+What else then? The visitor pattern, by which the driver crawls knowingly about, applying itself by its own updatable logic.
 
+And how will strategies be chosen? At the basic level, at random till something fits.
 
+Afterwards, there will be event-triggered responses that will make everything much more efficient. But this event triggering will itself be a kind of intermediary strategy. But this strategy
+will always be in force, for each and every application, so having it as one choice amongst others - when it will always apply as intermediary - makes little sense.
 
+Strategy execution without the follow on - are we expecting the dispatcher to be pluggable? Given a particular dispatcher... but no, there will only ever be one dispatcher, but with
+increasing capabilities. We don't want pluggability here. There is the driver, which crawls the data structure to find a suitable clump, and then delegates to the strategiser to find a strategy,
+but this strategiser will never do anything other than choose a random strategy from a list of possible strategies. Well... Then the strategy is given a chance to do something. Maybe we should go
+through strategies till we find one that fits. The selection of a strategy does though seem an area of possible growth: it'd be better maybe to delegate here to make clearer rogress.
 
+Crawl-> Strategise -> Execute (but at this point an improved executor might in fact find follow-on strategies to execute, so it will be a long time till the driver re-receives the execution)
 
+But a context is passed through to each stage, with a source of determinate arbitrariness (a seeded random).
 
+And unifiers? When will they come in? Projections can execute like the above... but holistic unifiers?
+Unifiers encounter clumps and index them (well, they don't have to) then, after secretly accumulating, they can act inline. They would do this by transplanting clumps from place to place. This
+means clumps must allow themselves to be plucked.
 
+Or rather - the mediating control layer will offer the facility of easily transplanting clumps to strategies. But to do this, Strategies will need to be able to access clumps by reference.
+*Dereferencing* is a facility that must be available to strategies, as is access to *local state*
 
+State would live on the ctx, which is of course the intermediary in all of this.
 
+-------------------------------------------------------
 
+Given manual involvement (which would be exceedingly productive), can we ensure persistant overrides? There would have to be some kind of flag involved - maybe like an exclamation mark on a name by
+convention?
 
+This actually touches on a previously untouched important point: what about view logic whittling down possibilities? The problem with this reliance on favourable optics is that we need
+to simplify information in the middle of its processing. 
+     
+Back to the previous para: manaul involvement (which we want) means that some decisions should be more weighty than others. A user's selection between multiple possiblities, or typing in of text,
+shouldn't be overwritten by an autonomous scraper. 
 
+Then there's also the consideration of how data will be randomly accessed to be edited - at this point we certainly want a database involved. The source of truth moves slowly down the pipeline,
+to ultimately sit in an accessible index. Intermediary pipeline stages are themselves local sources of truth, but as the truth moves magmalike downhill, its realm broadens out into
+a stable, well-managed store.
 
+This amounts to putting the issue to one side FOR NOW!
 
+-------------------------------------------------------
 
+The PoC doesn't do parallelism: this will have to change. The stream keeps everything in series, nicely under control.
 
+-------------
 
+So, even if we're unifying, we want to crawl to a clump. At that point the context should allow us to do whatever we want through its mediation.
 
+-------------
 
+*Stochastic/Batch*
 
+Alternatively, instead of applying stochastically, we could apply by batch (within each partitioned batch) - for instance, Not Founds could be all taken out in one fell swoop, instead of slowly waiting
+for them to boil away. Performing such clear actions would help us focus on the more important bits here - but batch processing can't do everything. Well, it probably can, but then there's an art to
+ordering the batch executions - it would simplify the programming a bit, but at the cost of saving the problem to be faced later. Randomness at least does *solve* the problem of productive data wrangling,
+and it opens the door to the more efficient event-listening mechanism, which is a kind of specialisation of it.  
 
+There's a place for batch application (the upstream scrapers and their filters are doing this already) - but it does not tackle the problem of arrangement directly.
 
+Though deduping could be done by batch. Fire through the set, build an index, dedupe. This mode of application isn't completely different to the picking at random one, though.
+A common abstraction could build for both.
 
+Batch:
+ - steps through each clump in turn 
+ - applies single strategy via a helpful intermediary context
 
+Stochastic:
+ - steps through each clump in turn
+ - applies an arbitrary strategy from a scoped collection
+ - triggers follow-on events
 
+Posed like this, the stochastic approach is pretty obviously a specialisation of the batch approach - stochasticism is a single strategy applied in batch.
 
+Batch processing first, then.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-------------
