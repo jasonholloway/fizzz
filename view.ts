@@ -3,7 +3,8 @@ import prettyJson from 'prettyjson'
 import clear from 'cli-clear'
 import chokidar from 'chokidar'
 import _ from 'highland'
-import loadJson from 'load-json-file'
+import fs from 'fs'
+import js from 'jsonstream'
 import parseArgs from 'minimist'
 
 const args = parseArgs(process.argv.slice(2));
@@ -33,12 +34,17 @@ async function render() {
 
     const cols = await diffs
                     .map(d => d.map(pretty))
+                    .flatMap(s => [s, {}])
                     .collect()
                     .toPromise(Promise);
 
-
     clear();
-    console.log(columnify(cols, { preserveNewLines: true, columnSplitter: ' | ' }));
+
+    console.log(columnify(cols, { 
+        preserveNewLines: true, 
+        columnSplitter: ' | ' ,
+        maxLineWidth: 'auto'
+    }));
 }
 
 function onError(err) {
@@ -47,7 +53,8 @@ function onError(err) {
 }
 
 function loadJsonStream(path: string): Highland.Stream<any> {
-    return _(loadJson(path) as Promise<any[]>).flatten();
+    return _(fs.createReadStream(path)
+                .pipe(js.parse('*')))
 }
 
 function pretty(data: any): string {
