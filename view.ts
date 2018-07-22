@@ -6,7 +6,7 @@ import _ from 'highland'
 import loadJson from 'load-json-file'
 import parseArgs from 'minimist'
 
-const args = parseArgs(process.argv);
+const args = parseArgs(process.argv.slice(2));
 const files = args._;
 
 run().catch(onError);
@@ -23,28 +23,31 @@ async function run() {
 }
 
 async function render() {
+    const offset = 0;
+    const count = 10;
 
-    const fileStreams = await _(files)
-                                .map(file => _(loadJson(file) as Promise<any[]>))
-                                .toPromise(Promise);
-        
-    const diffs = await fileStreams
-                        .take(10)
-                        .map(r => ({
-                            before: pretty(r[0]),
-                            after: pretty(r[1])
-                        }))
-                        .flatMap(r => _([r, {}]))
-                        .collect()      
-                        .toPromise(Promise);
+    const diffs = _(files)
+                    .map(loadJsonStream)
+                    .zipAll0()
+                    .drop(offset).take(count);    
+
+    const cols = await diffs
+                    .map(d => d.map(pretty))
+                    .collect()
+                    .toPromise(Promise);
+
 
     clear();
-    console.log(columnify(diffs, { preserveNewLines: true, columnSplitter: ' | ' }));
+    console.log(columnify(cols, { preserveNewLines: true, columnSplitter: ' | ' }));
 }
 
 function onError(err) {
     console.error(err);
     process.exit();
+}
+
+function loadJsonStream(path: string): Highland.Stream<any> {
+    return _(loadJson(path) as Promise<any[]>).flatten();
 }
 
 function pretty(data: any): string {
