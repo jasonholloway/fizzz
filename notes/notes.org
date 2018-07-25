@@ -685,3 +685,22 @@ Posed like this, the stochastic approach is pretty obviously a specialisation of
 Batch processing first, then.
 
 -------------
+
+Changes should be diffs - but not just to individual clumps! Transplantations, unifications, are also a kind of diff.
+
+It would be nice though to get a big list of everything done.
+
+-------------
+
+The UI for manually unifying - how would that be? It almost feelslike this most basic interface should be the first - we want ready feedback for this kind of stuff
+
+-------------
+
+The overall map of processings - data flow, basically - has to be in VSC. This allows steady, shared progress. One machine is great for hacking, but not so much for organised development.
+
+I'm expecting some kind of schema, relating scrapers, processors, etc. The actual orchestration of these stages is then a problem to face after.
+
+Having everything in one place would be best - a centralised overview, in the nicest declarative language.
+
+
+

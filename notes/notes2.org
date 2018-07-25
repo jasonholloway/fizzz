@@ -1,0 +1,102 @@
+*Refs in Outputs*
+
+Distilled results will refer back to full, individualised entites. The full entities aren't themselves passed around through each and every operation.
+
+If this is so, we can't expect to operate on streams only. Operations on distillates somehow lock their source layers - any changing in the meantime would
+mean the distillates lose their footing, becoming unmergable.
+
+Then every item needs an identity.
+
+And layered operations must be performed as a transactional sequence, so that references remain stable.
+
+-----------
+
+There's also the issue of disparate storage. 
+
+----------
+
+An orchestrator will: run a set sequence of transforms on a particular set of partitions.
+
+But then - the output of this operation needs to be merged back into the common mass.
+
+Unification, though, isn't a merging back in - it's a re-index and migration into a better form.
+
+But there'll be a left-behind layer of bits. We can keep track of these bits, at increasing cost, but with the benefits of immutable projections.
+
+Keeping things separated and uni-directional eases the exploratory programming: we can have a git-style progress forwards, with tracking of what was actually performed - 
+what worked, and what didn't. A sequence can be performed, and the characteristics of the output individually measured.
+
+Though there has to be a merging in to the common base - you can't get rid of the reality of state. Small manouevres can be taken as unidirectional, and they can be measured as
+such, but there needs to ultimately be a central, base index - a datastore, basically.
+
+So it's not ETL, but map/reduce/merge - well some loops can be more drawn out than others.
+
+-----------
+
+And unification? Here the merging becomes more difficult. Merging back in requires some proper mutation of the central store: entities will be made subordinate to others - they will be
+plucked out, reinserted here and there. Normal re-merging of property values is itself more involved than first realised: a new name, cleaned up, can be emplaced over the previous inhabitant - 
+but this is a dubiously violent operation. It's as if all past results should still be available - but then we come back to the unidirectional, hi-fidelity approach. The common store becomes
+an increasingly layered, encrusted surface of projections on projections. Data lookup becomes slow, of course. But! Speed isn't the greatest concern here. The Map operation extracts a nicely
+gathered tuple for each reduction. 
+
+Then, say, we build a new intermediate index - but, again, this is built from a small subset of data - the greater hulking mass is still behind, bloated, unused
+and (relatively) inaccessible. The new index would refer back to the mass by means of identifier. Each referred-to tuple would have a GUID.
+
+The obsolescence of old layers then becomes difficult to determine - we will have links on links on links... the graph could be crawled to find the deepest upstreams to cull, but this seems like a big
+horrible problem in itself. Better to practice good housekeeping, and keep wastage down.
+
+Good housekeeping would be selectively deleting old layers when we perform new sequences. Old layers would still be linked to from new projections, so they could be found if needed.
+
+-----------------------
+
+So, we need an orchestrator that will mapreduce next t'the data and bring it out central for recombination.
+
+Though some operations could just map/filter, and leave partitions as they were. But this is a more narrow, less generous optimisation. Forget about it for now.
+
+So - the orchestrator fetches the data, maps it, reduces it, and recommits it.
+
+The actual logic of the transform should be built into a particular script. 
+
+-----------------------
+
+but the committing to particular addresses at the end (each partition of a result set should have a consistent partition key)
+
+is decided by - what?
+
+the orchestrator know the exact name of the operation it is performing - this should be the root name of the partition it saves to.
+
+in practice, each partition will be saved to a folder of files.
+but a partition will just be a json file under a name. The elements live inside the json file.
+
+The orchestration goes from a set to a set; this is already being done by run.ts.
+
+The difference is that run.ts has its execution inline - it should defer to a separate transform file
+
+-----------------------
+
+This is allleading towards unidirectional processing. But then, if we are to manage things in batches, the shoe fits very tightly. A kind of repeated processing of a set could be a single
+transform - each 'epoch' of processing would similarly load and recommit after a period. During the course of processing, such a transform could still resolve identifiers to find full
+entities.
+
+-----------------------
+
+After doing its thing, the orchestrator should then update a pointer.
+
+-----------------------
+
+Can MapReduceCombines be composed? Maps certainly can be - but reductions? Doubtful.
+
+In fact, it's a definite 'no', unless the follow on mapping followed the initial reduction.
+
+So - they can certainly be strung together - as layers of filters would be. But nothing more.
+
+A Transform therefore needs an explicitly-typed output to its reduction - but the output of map is an internal matter.
+
+Inputs are also typeable - tho we'd expect them often to be 'any'.
+
+------------------------
+
+I think I was nosing towards using unixy pipes etc for the orchestration. This would nicely allow other kinds of apps to do their stuff. Could mess about with other languages etc.
+
+
+
