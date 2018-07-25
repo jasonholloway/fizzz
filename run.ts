@@ -22,13 +22,9 @@ type Partition = {
 }
 
 interface Strategy {
-    //listen(): boolean
-    test(slice: Slice): Projection | false
+    run(slice: Slice): Promise<false | Clump>
 }
 
-interface Projection {
-    run(): Promise<Clump>
-}
 
 
 interface Rand {
@@ -43,35 +39,35 @@ interface Context {
     rand: Rand
 }
 
-
 function testStrategy(): Strategy {
-    let i = 0;
+    let i = 20;
 
     return {
-        test(slice: Slice): false | Projection {            
-            if(++i % 2 == 0) return false;
-            return {
-                async run(): Promise<Clump> {
-                    slice.i = i;
-                    return slice;
-                }
+        async run(slice: Slice): Promise<false | Clump> {     
+            if(typeof slice.phone !== 'string') return false;
+            else {
+                const res = /^Tel: (0[0-9 ]{10,13})/.exec(slice.phone);
+                slice.phone = res[1].trim()
+                return slice;
             }
         }
     }
-} 
-
+}
 
 
 run(testStrategy()).catch(onError);
 
-
 async function run(strategy: Strategy) {
     _(process.stdin.pipe(js.parse('*')))
         .take(10)
-        .flatMap((c: Slice) => {
-            const exec = strategy.test(c);
-            return exec ? _(exec.run()) : [c];
-        })
+        .flatMap(
+            (c: Slice) => _(strategy.run(c))
+                            .map(res => res === false ? c : res)
+                            .errors((err, push) => {
+                                console.error(err);
+                                push(null, c);
+                            })
+        )
         .stopOnError(_.log)
         .pipe(js.stringify())
         .pipe(process.stdout);
