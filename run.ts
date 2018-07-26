@@ -1,33 +1,50 @@
 import js from 'jsonstream'
+import fs, { PathLike } from 'fs'
 import _ from 'highland'
 import Stream from './core/Stream'
-import MapReduceCombine from './core/MapReduceCombine'
+import Transform from './core/Transform'
+import parseArgs from 'minimist'
 
-const transform = loadTransform();
+const args = parseArgs(process.argv.slice(2));
+const inputs: string[] = Array.isArray(args.i)
+                                        ? args.i : [args.i];
+const transformFile: string = args.t;
+const output: string = args.o;
 
-loadData()
+
+const transform = loadTransform(transformFile);
+console.log(transform);
+
+loadData(inputs)
     .through(transform.map)
     .through(transform.reduce)      
     //and now combine...
     .through(js.stringify())
     .stopOnError(onError)
-    .pipe(process.stdout);
+    .pipe(saveData(output));
 
-/**
- * but instead of loading from the command line
- * this in fact should load from a file and commit * 
- */
-
-function loadTransform(): MapReduceCombine<any, any, any> {
-    return require('./transforms/CleanTitles');
+function loadTransform(file: string): Transform<any, any, any> {
+    return require(file).default();
 }
 
-function loadData(): Stream<any> {
-    return getInputJson() as Stream<any>;
+function loadData(inputs: string[]): Stream<any> {
+    return _(inputs).flatMap(i => loadFile(`./data/${i}/data.json`));
 }
 
-function getInputJson() {
-    return _(process.stdin.pipe(js.parse('*')));
+function loadFile(file: PathLike) {
+    return _(fs.createReadStream(file))
+            .through(js.parse('*'));
+}
+
+function saveData(output: string) {
+    fs.mkdirSync(`./data/${output}`);
+
+    const str = _();
+
+    str.through(js.stringify())
+        .pipe(fs.createWriteStream(`./data/${output}/data.json`));
+
+    return str;
 }
 
 function onError(err: Error) {
