@@ -1,0 +1,28 @@
+
+
+Disparate attributes lingering in separate sets should somehow make themselves findable once the identity of entities has been established.
+
+But even in unification, multiple kinds of evidence has to be taken into account - one index there, and one there, with the results merged into one.
+
+------
+
+Given a deduplicated set of name/id/alias tuples, this should be merged in by a flow with reindexed versions of various source sets.
+
+The overall flow has been one big speculation, and its reality must now be brought up to date.
+
+Most simply we can project an entire new composite set here.
+
+------
+
+So individual bits of evidence need individual guids (or some other individualising identifier - url maybe) - this will then be carried around by all indexing stages. Each tuple therefore needs
+its bag of ids.
+
+We then do joins with potential source sets.
+
+------
+
+Flows can delegate to other sub-flows
+
+Flows can include interrogation stages - where user input is required to verify choices. How these choices are actually presented is left open to whatever adaptors are available.
+
+Such interactive steps needn't be prompt and synchronous - instead jobs can be queued up awaiting user input via some nice web UI, for instance.

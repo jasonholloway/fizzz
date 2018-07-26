@@ -84,7 +84,7 @@ After doing its thing, the orchestrator should then update a pointer.
 
 -----------------------
 
-Can MapReduceCombines be composed? Maps certainly can be - but reductions? Doubtful.
+Can Transforms be composed? Maps certainly can be - but reductions? Doubtful.
 
 In fact, it's a definite 'no', unless the follow on mapping followed the initial reduction.
 
