@@ -1,9 +1,9 @@
-import MapReduceCombine from '../core/MapReduceCombine'
+import Transform from '../core/Transform'
 import Stream from '../core/Stream'
 
 const re = /^(.*)(?: Restaurant Manchester)(?: Manchester)/i;
 
-export default class CleanTitles implements MapReduceCombine<any, any, any> {
+class CleanTitles implements Transform<any, any, any> {
 
     map(els: Stream<any>): Stream<any> {
         return els
@@ -22,3 +22,5 @@ export default class CleanTitles implements MapReduceCombine<any, any, any> {
     }
 
 }
+
+export default () => new CleanTitles();

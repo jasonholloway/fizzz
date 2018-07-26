@@ -1,9 +1,9 @@
-import MapReduceCombine from "../core/MapReduceCombine";
+import Transform from "../core/Transform";
 import Stream from "../core/Stream";
 
 const re = /^(.+)[\n\r]\W*map$/m;
 
-class CleanAddress implements MapReduceCombine<any, any, any> {
+class CleanAddress implements Transform<any, any, any> {
     map(els: Stream<any>): Stream<any> {
         return els
             .filter(a => typeof a.address !== 'string')
@@ -23,4 +23,4 @@ class CleanAddress implements MapReduceCombine<any, any, any> {
     }
 }
 
-export default CleanAddress;
+export default () => new CleanAddress();

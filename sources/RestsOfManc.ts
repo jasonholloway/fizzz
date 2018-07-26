@@ -1,14 +1,16 @@
 import scrape from 'scrape-it'
 import _ from 'highland'
-import js from 'jsonstream'
+import Source from '../core/Source';
+import Stream from '../core/Stream';
 
 const url = 'https://restaurantsofmanchester.com';
 
-scrapePageLinks(url)    
-    .flatMap(a => scrapePage(a.href))
-    .take(200)
-    .pipe(js.stringify())
-    .pipe(process.stdout);
+class RestsOfManc implements Source {
+    run(): Stream<any> {
+        return scrapePageLinks(url)    
+                .flatMap(a => scrapePage(a.href));
+    }
+}
     
 function scrapePageLinks(url: string) {
     return _(scrape<{ links: { href: string }[] }>(
@@ -42,3 +44,5 @@ function scrapePage(url: string) {
             ))
             .map(r => r.data)
 }
+
+export default RestsOfManc;

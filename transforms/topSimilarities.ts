@@ -1,11 +1,11 @@
 import leven from 'leven'
-import MapReduceCombine from "../core/MapReduceCombine"
+import Transform from "../core/Transform"
 import Stream from "../core/Stream"
 
 type NameId = { name: string, id: number }
 type Score = { n1: string, n2: string, s: number }
 
-class TopSimilarites implements MapReduceCombine<any, NameId, Score[]> {
+class TopSimilarites implements Transform<any, NameId, Score[]> {
     
     map(els: Stream<any>): Stream<NameId> {
         return els
@@ -40,4 +40,4 @@ class TopSimilarites implements MapReduceCombine<any, NameId, Score[]> {
     }
 }
 
-export default TopSimilarites;
+export default () => new TopSimilarites();

@@ -1,9 +1,9 @@
-import MapReduceCombine from "../core/MapReduceCombine";
+import Transform from "../core/Transform";
 import Stream from "../core/Stream";
 
 const re = /^Tel: (0[0-9 ]{10,13})/;
 
-class CleanPhone implements MapReduceCombine<any, any, any> {
+class CleanPhone implements Transform<any, any, any> {
     map(els: Stream<any>): Stream<any> {
         return els
             .filter(a => typeof a.phone !== 'string')
@@ -22,4 +22,4 @@ class CleanPhone implements MapReduceCombine<any, any, any> {
     }
 }
 
-export default CleanPhone;
+export default () => new CleanPhone();

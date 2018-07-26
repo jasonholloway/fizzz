@@ -1,17 +1,19 @@
 import scrape from 'scrape-it'
 import _ from 'highland'
-import js from 'jsonstream'
+import Source from '../core/Source'
+import Stream from '../core/Stream';
 
 const baseUrl = 'http://www.manchester.com'
 const homePath = '/restaurants/manchester-restaurants.php';
 const postcodeRegex = /(([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([A-Za-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9]?[A-Za-z]))))\s?[0-9][A-Za-z]{2}))/;
 
-scrapePageLinks(baseUrl + homePath)
-    .flatMap(a => scrapePage(a.href))
-    .take(200)
-    .pipe(js.stringify())
-    .pipe(process.stdout);
-    
+class ManchesterCom implements Source {
+    run(): Stream<any> {
+        return scrapePageLinks(baseUrl + homePath)
+                .flatMap(a => scrapePage(a.href));
+    }
+}
+
 function scrapePageLinks(url: string) {
     return _(scrape<{ links: { href: string }[] }>(
                 url, { 
@@ -48,6 +50,4 @@ function scrapePage(url: string) {
             .map(r => r.data)
 }
 
-
-
-
+export default ManchesterCom;
