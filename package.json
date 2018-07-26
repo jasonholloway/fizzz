@@ -9,30 +9,26 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/args": "^3.0.0",
-    "@types/cheerio": "^0.22.8",
     "@types/chokidar": "^1.7.5",
-    "@types/load-json-file": "^2.0.7",
-    "@types/minimist": "^1.2.0",
-    "@types/node": "^10.5.2",
-    "@types/prettyjson": "0.0.28",
-    "ts-node": "^7.0.0",
-    "typescript": "^2.9.2"
-  },
-  "dependencies": {
     "@types/highland": "^2.12.0",
     "@types/jsonstream": "^0.8.30",
-    "args": "^5.0.0",
+    "@types/leven": "^2.1.1",
+    "@types/minimist": "^1.2.0",
+    "@types/node": "^10.5.2",
+    "@types/prettyjson": "0.0.28"
+  },
+  "dependencies": {
     "chokidar": "^2.0.4",
     "cli-clear": "^1.0.4",
     "columnify": "^1.5.4",
     "crawler": "^1.1.4",
     "highland": "^2.13.0",
     "jsonstream": "^1.0.3",
-    "load-json-file": "^5.0.0",
+    "leven": "^2.1.0",
     "minimist": "^1.2.0",
     "prettyjson": "^1.2.1",
     "scrape-it": "^5.0.5",
-    "spider": "^0.1.0"
+    "ts-node": "^7.0.0",
+    "typescript": "^2.9.2"
   }
 }
