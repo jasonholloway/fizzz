@@ -22,7 +22,7 @@ function scrapePageLinks(url: string) {
                         data: {            
                             href: { attr: 'href' }
                         }
-                    }
+                    }                    
             }))
             .flatMap(r => _(r.data.links))
             .filter(a => /^\/restaurants\/details\/.+$/.test(a.href))
@@ -39,7 +39,11 @@ function scrapePage(url: string) {
                     },
                     postcode: {
                         selector: 'div.page-content p',
-                        how: el => el.text().match(postcodeRegex)[1]
+                        how: el => {
+                            const matched = el.text().match(postcodeRegex);
+                            if (matched && matched.length > 1) return matched[1];
+                            else return null;
+                        }
                     },
                     phone: {
                         selector: 'div.side-right p',
