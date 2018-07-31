@@ -1,5 +1,7 @@
+import Key from "./Key";
+
 type Job = {
-    stateKey: string
+    stateKey: Key
 }
 
 export default Job;

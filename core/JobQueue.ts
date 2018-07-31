@@ -7,37 +7,38 @@ class JobQueue {
 
     queue: Queue;
 
-    popped: Stream<Job>;
+    private popped: Stream<Job>;
+    private push: (Job) => Stream<void>
 
     constructor() {
         const self = this;
 
         this.queue = new Queue('../data/jobs', e => { if (e) console.error(e); });
+        this.push = _.wrapCallback(this.queue.push.bind(this.queue));
 
         this.popped = _((push, next) => {
-            pump();
-    
-            function pump() {
-                self.queue.pop((err, job) => {
-                    if(err) return push(err);
+            console.debug('JobListening');
+            self.queue.pop((err, job) => {
+                if(err) return push(err);
 
-                    console.debug('JobPopped', job);
-                    push(null, job);
-                    next();
-
-                    setImmediate(() => pump());                    
-                });
-            }
+                console.debug('JobPopped', job);
+                push(null, job);
+                next();
+            });
         });
     }
 
-    enqueue(job: Job) {
-        console.debug('JobQueued', job);
-        return this.queue.push(job, e => { if(e) console.error(e); });
+    enqueue(job: Job): Stream<void> {
+        return this.push(job)
+                .tap(j => console.debug('JobQueued', job));
     }
 
     next(): Stream<Job> {
-        return this.popped.fork();
+        const forked = this.popped.fork();
+
+        forked.observe().done(() => console.debug('ploplopplop'))
+
+        return forked;
     }
 }
 

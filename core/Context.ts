@@ -1,10 +1,9 @@
 import Stream from "./Stream";
-
-type Key = string;
+import Key from "./Key";
 
 interface Context {
-    load(name: string): Stream<any>
-    save(name: string): (data: Stream<any>) => Stream<Key>
+    load(key: Key): Stream<any>
+    save(key: Key): (data: Stream<any>) => Stream<Key>
 };
 
 export default Context;

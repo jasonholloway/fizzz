@@ -1,3 +1,3 @@
-type Key = string;
+type Key = string | number;
 
 export default Key;

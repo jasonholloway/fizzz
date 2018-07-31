@@ -14,9 +14,9 @@ class FlowClient {
         const state: FlowState = { defPath, pos: 0 };
     
         await saveData(`flows/${id}`)(_([state]))
-                .map(stateKey => {
-                    this.jobs.enqueue({ stateKey })
-                    return { id, stateKey };
+                .flatMap(stateKey => {
+                    return this.jobs.enqueue({ stateKey })
+                                .map(v => ({ id, stateKey }));
                 })
                 .toPromise(Promise);
     }
