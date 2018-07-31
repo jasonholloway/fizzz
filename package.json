@@ -10,6 +10,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/chokidar": "^1.7.5",
+    "@types/global-tunnel-ng": "^2.1.0",
     "@types/highland": "^2.12.0",
     "@types/jsonstream": "^0.8.30",
     "@types/leven": "^2.1.1",
@@ -25,6 +26,7 @@
     "crawler": "^1.1.4",
     "file-queue": "^0.3.0",
     "fileq": "^1.4.0",
+    "global-tunnel-ng": "^2.5.4",
     "highland": "^2.13.0",
     "jsonstream": "^1.0.3",
     "leven": "^2.1.0",

@@ -5,5 +5,7 @@ const jobs = new JobQueue();
 
 const client = new FlowClient(jobs);
 
-client.startFlow('scrape0', '../flowDefs/scrapeRestaurants')
+const ms = new Date().getTime();
+
+client.startFlow(`scrape${ms}`, '../flowDefs/scrapeRestaurants')
     .catch(err => console.error('runFlow', err));
