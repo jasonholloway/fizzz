@@ -41,7 +41,7 @@ class JobPump {
 
                 info('StageFound', stage);
 
-                return (stage(createContext(), state.data) || _())
+                return (stage(createContext(), state.data) || _([]))
                         .collect()
                         .map(res => ({
                             ...state,
